@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using Cinemachine;
 
-public class PlayerManager : MonoBehaviourPun
+public class PlayerManager : MonoBehaviourPunCallbacks, IPunObservable
 { 
     // Start is called before the first frame update
     public Vector2 inputVec;
@@ -19,7 +19,7 @@ public class PlayerManager : MonoBehaviourPun
     public Text NickNameText;
 
     public int currnet_dir = -1;
-    Vector3 curPos;
+    Vector2 curPos;
 
     void Awake()
     {
@@ -70,14 +70,12 @@ public class PlayerManager : MonoBehaviourPun
             }
 
             PV.RPC("FlipXRPC", RpcTarget.Others, currnet_dir);
-
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                animator.SetTrigger("Action");
+            if (Input.GetKeyDown(KeyCode.Space)) {
+                PV.RPC("ActionRPC", RpcTarget.All, true);
             }
             else
             {
-                animator.SetTrigger("DeAction");
+                PV.RPC("ActionRPC", RpcTarget.All, false);
             }
         }
     }
@@ -86,13 +84,42 @@ public class PlayerManager : MonoBehaviourPun
     {
         inputVec = value.Get<Vector2>();
     }
-     
+
+
+
+    [PunRPC]
+    void ActionRPC(bool state)
+    {
+        if(state == true)
+        {
+            animator.SetTrigger("Action");
+        }
+        else
+        {
+            animator.SetTrigger("DeAction");
+        }
+    }
 
     [PunRPC]
     void FlipXRPC(int x)
     {
         if (x == -1) return;
-        sprit.flipX = x == 1 ? false : true;
+        sprit.flipX = (x != 1);
     }
 
+
+
+
+
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if (stream.IsWriting)
+        {
+            stream.SendNext(transform.position);
+        }
+        else
+        {
+            curPos = (Vector2)stream.ReceiveNext();
+        }
+    }
 }
